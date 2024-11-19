@@ -1,6 +1,6 @@
 
 import random
-import game.combat as combat
+#import game.combat as combat
 import game.superclasses as superclasses
 import game.display as display
 import game.items as items

@@ -33,7 +33,7 @@ class PeacefulIsland (location.Location):
         self.starting_location = self.locations["southBeach"]
 
     def enter (self, ship):
-        display.announce ("You have arrived at a seemingly tranquil island.", pause=False)
+        display.announce ("You have arrived at a seemingly tranquil island.", pause=True)
 
 
 class BeachWithShip (location.SubLocation):

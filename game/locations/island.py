@@ -144,7 +144,7 @@ class Island (location.Location):
         self.starting_location = self.locations["beach"]
 
     def enter (self, ship):
-        display.announce ("arrived at an island", pause=False)
+        display.announce ("arrived at an island", pause=True)
 
 
 class Beach_with_ship (location.SubLocation):
