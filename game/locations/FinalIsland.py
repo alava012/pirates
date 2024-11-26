@@ -6,6 +6,8 @@ import game.items as items
 import game.combat as combat
 import game.event as event
 import game.items as item
+from game.context import Context
+import game.player as player
 import random
 
 class FinalIsland (location.Location):
@@ -18,15 +20,15 @@ class FinalIsland (location.Location):
 
         self.locations = {}
 
-        self.locations["southBeach"] = ShipAtBeach(self)
+        self.locations["southBeach"] = ShipAtBeach(self) # Parking location
 
-        #self.locations["beached ship"] = BeachedShip(self) #Treasure and Puzzle Location
+        self.locations["beached ship"] = BeachedShip(self) # Treasure and Puzzle Location
 
-        self.locations["central square"] = CentSquare(self) # Location
+        self.locations["central square"] = CentSquare(self) # Seagull Location
 
-        self.locations["enemy pirate crew camp"] = PirCrewCamp(self) #Encounter Location
+        self.locations["enemy pirate crew camp"] = PirCrewCamp(self) # Enemy Encounter Location
 
-        self.locations["pirate captain arena"] = Arena(self) #Boss Location
+        self.locations["pirate captain arena"] = Arena(self) # Special Enemy Location
 
         self.starting_location = self.locations["southBeach"]
 
@@ -94,9 +96,11 @@ class BeachedShip (location.SubLocation):
         self.verbs['south'] = self
         self.verbs['east'] = self
         self.verbs['west'] = self
+        self.event_chance = 100
+        self.events.append (ChestPuzzle())
 
     def enter (self):
-        description = "You find yourself at a beached pirate ship, its crew absent from the scene."
+        description = "You find yourself at a beached pirate ship, its crew absent from the scene. There is a locked chest visible inside the ship."
         display.announce(description)
 
     def process_verb (self, verb, cmd_list, nouns):
@@ -172,7 +176,6 @@ class PirateCaptain(combat.Monster):
         self.type_name = "Enemy pirate"
 
 class PirateCamp (event.Event):
-    #petemade = False
     '''
     A combat encounter with a stranded crew of pirates inhabiting a camp.
     When the event is drawn, creates a combat encounter with 4 to 7 enemy pirates, kicks control over to the combat code to resolve the fight, then adds itself and a simple success message to the result
@@ -184,14 +187,10 @@ class PirateCamp (event.Event):
     def process (self, world):
         '''Process the event. Populates a combat with enemy pirates.'''
         result = {}
-        result["message"] = "the pirates are defeated!"
+        result["message"] = "The pirates are defeated!"
         monsters = []
         min = 4
         uplim = 7
-        #if not ShorePirates.petemade:
-        #ShorePirates.petemade = True
-        #min = 1
-        #uplim = 5
         monsters.append(EnemyPirate("Stranded Enemy Pirate"))
         self.type_name = ""
         monsters[0].health = 3*monsters[0].health
@@ -206,7 +205,6 @@ class PirateCamp (event.Event):
         return result
     
 class PirateCaptainFight (event.Event):
-    #petemade = False
     '''
     A combat encounter with a pirate captain.
     When the event is drawn, creates a combat encounter with 1 pirate captain, kicks control over to the combat code to resolve the fight, then adds itself and a simple success message to the result
@@ -218,7 +216,7 @@ class PirateCaptainFight (event.Event):
     def process (self, world):
         '''Process the event. Populates a combat with a pirate captain.'''
         result = {}
-        result["message"] = "the pirate captain is defeated!"
+        result["message"] = "The pirate captain is defeated!"
         monsters = []
         monsters.append(EnemyPirate("Enemy Pirate Captain"))
         monsters[0].health = 7*monsters[0].health
@@ -228,23 +226,86 @@ class PirateCaptainFight (event.Event):
         result["newevents"] = [ self ]
         return result
     
-''' 
-class ChestPuzzle (event.Event):
-    def __init__ (self):
-        self.name = " locked chest"
-        self.verbs["open chest"] = self
-        self.verbs["leave"] = self
-        self.verbs["continue"] = self
-    
-    def process(self, world):
-        result = {}
-
-'''
-
 class Musket(item.Item):
     def __init__(self):
-        super().__init__("musket", 235) #Note: price is in shillings (a silver coin, 20 per pound)
+        super().__init__("musket", 500) #Note: price is in shillings (a silver coin, 20 per pound)
         self.damage = (20,150)
         self.skill = "guns"
         self.verb = "shoot"
         self.verb2 = "shoots"
+
+
+class ChestPuzzle (Context, event.Event):
+    def __init__ (self):
+        super().__init__()
+        self.name = " locked chest"
+        self.verbs['open'] = self
+        self.verbs['leave'] = self
+        self.go = False
+        self.result = {}
+        self.item_in_chest = Musket()
+
+
+    def process(self, sublocation):
+        self.result = {}
+        self.result["newevents"] = [ self ]
+        self.result["message"] = "You leave the now empty chest."
+        self.sublocation = sublocation
+
+        display.announce(f"Before you stands a locked chest, will you attempt to open the chest or leave it?", pause=False)
+        player.Player.get_interaction ([self])
+
+        return self.result
+
+    def process_verb (self, verb, cmd_list, nouns):
+        if verb == "leave":
+            self.result["message"] = "You leave the chest."
+            config.the_player.next_loc = self.sublocation.main_location.locations["central square"]
+            config.the_player.go = True
+
+        elif verb == "open":
+            lockcount = 0
+            num1 = random.randint(1, 3)
+            num2 = random.randint(1, 6)
+            num3 = random.randint(1, 9)
+            if lockcount == 0:
+                guess = 0
+                while guess != num1:
+                    guess = int(input("Enter a number from 1 to 3 to attempt to pick the lock: "))
+                    if (guess < num1) or (guess > num1):
+                        print("The lock did not budge.")
+                    if guess == num1:
+                        print("You unlocked the first lock.")
+                        lockcount += 1
+            
+            if lockcount == 1:
+                guess = 0
+                while guess != num2:
+                    guess = int(input("Enter a number from 1 to 6 to attempt to pick the lock: "))
+                    if (guess < num2) or (guess > num2):
+                        display.announce ("The lock did not budge.")
+                    if guess == num2:
+                        display.announce ("You unlocked the second lock.")
+                        lockcount += 1
+
+            if lockcount == 2:
+                guess = 0
+                while guess != num3:
+                    guess = int(input("Enter a number from 1 to 9 to attempt to pick the lock: "))
+                    if (guess < num3) or (guess > num3):
+                        display.announce ("The lock did not budge.")
+                    if guess == num3:
+                        display.announce ("You unlocked the final lock.")
+                        lockcount += 1
+                
+            if lockcount == 3:
+                display.announce ("The chest was successfully unlocked, inside it lies a fancy and powerful-looking musket.")
+                at_least_one = False #Track if you pick up an item, print message if not.
+                item = self.item_in_chest
+                #if item != None and (cmd_list[1] == item.name or cmd_list[1] == "all"):
+                display.announce(f"You take the {item.name} from the chest.")
+                config.the_player.add_to_inventory([item])
+                self.item_in_chest = None
+                config.the_player.go = True
+                at_least_one = True
+                self.result["newevents"] = [ ]

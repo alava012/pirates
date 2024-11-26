@@ -62,7 +62,7 @@ class Location:
         config.the_player.go = False
         for crew in config.the_player.get_pirates():
             crew.print()
-        while (config.the_player.go == False):
+        while ((config.the_player.go == False) and (config.the_player.next_loc == None)):
             config.the_player.get_interaction ([config.the_player, config.the_player.location])
 
     def end_turn(self):
