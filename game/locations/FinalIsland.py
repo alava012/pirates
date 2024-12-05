@@ -44,6 +44,8 @@ class ShipAtBeach (location.SubLocation):
         self.verbs['south'] = self
         self.verbs['east'] = self
         self.verbs['west'] = self
+        self.event_chance = 50
+        self.events.append (CrabAttack())
 
     def enter (self):
         display.announce ("You arrive at the beach of an island currently drenched in conflict.\n" +
@@ -157,12 +159,20 @@ class Arena (location.SubLocation):
         if (verb == "east"):
             config.the_player.next_loc = self.main_location.locations["enemy pirate crew camp"]
 
+class AngryCrab(combat.Monster):
+    def __init__ (self, name):
+        attacks = {}
+        attacks["pinch"] = ["pinches",random.randrange(70,101), (10,15)]
+        attacks["crustacean kick"] = ["crustacean kick",random.randrange(70,101), (8,13)]
+        super().__init__(name, random.randrange(3,10), attacks, 100 + random.randrange(-20,11)) # 3-9 HP, Attacks, 80-110 Speed (100 total normal)
+        self.type_name = "Angry crab"
+
 class EnemyPirate(combat.Monster):
     def __init__ (self, name):
         attacks = {}
         attacks["cutless slash"] = ["cutlass slashes",random.randrange(70,101), (10,15)]
         attacks["flintlock shot"] = ["flintlock shots",random.randrange(70,101), (8,13)]
-        super().__init__(name, random.randrange(14,41), attacks, 100 + random.randrange(-40,41)) # 14-40 HP, Attacks, 110-190 Speed (100 total normal)
+        super().__init__(name, random.randrange(14,41), attacks, 100 + random.randrange(-40,41)) # 14-40 HP, Attacks, 60-140 Speed (100 total normal)
         self.type_name = "Enemy pirate"
 
 class PirateCaptain(combat.Monster):
@@ -173,7 +183,36 @@ class PirateCaptain(combat.Monster):
         attacks["canon blast"] = ["canon blasts",random.randrange(70,101), (30, 51)]
         attacks["parrot peck"] = ["parrot pecks",random.randrange(70,101), (5,11)]
         super().__init__(name, 1000, attacks, 150 + random.randrange(-10,11)) # 1000-1100 HP?, Attacks, 140-160 Speed
-        self.type_name = "Enemy pirate"
+        self.type_name = "Pirate captain"
+
+class CrabAttack (event.Event):
+    '''
+    A combat encounter with a bunch of angry crabs.
+    When the event is drawn, creates a combat encounter with 6 to 8 enemy crabs, kicks control over to the combat code to resolve the fight, then adds itself and a simple success message to the result
+    '''
+
+    def __init__ (self):
+        self.name = " angry crab attack"
+
+    def process (self, world):
+        '''Process the event. Populates a combat with enemy crabs.'''
+        result = {}
+        result["message"] = "The crabs are defeated and the remaining find somewhere else on the southern beach to inhabit."
+        monsters = []
+        min = 6
+        uplim = 8
+        monsters.append(AngryCrab("Very Angry Crab"))
+        self.type_name = ""
+        monsters[0].health = 1*monsters[0].health
+        n_appearing = random.randrange(min, uplim)
+        n = 1
+        while n <= n_appearing:
+            monsters.append(AngryCrab("Very Angry Crab "+str(n)))
+            n += 1
+        display.announce ("You are attacked by a group of angry crabs!")
+        combat.Combat(monsters).combat()
+        result["newevents"] = [ self ]
+        return result
 
 class PirateCamp (event.Event):
     '''
@@ -222,7 +261,7 @@ class PirateCaptainFight (event.Event):
         monsters[0].health = 7*monsters[0].health
         #n += 1
         display.announce ("You are attacked by a lone pirate captain!")
-        combat.Combat(monsters).combat()
+        combat.Combat(monsters).combat() 
         result["newevents"] = [ self ]
         return result
     
